@@ -15,8 +15,7 @@ def malletize(filename):
 
     for n, row in enumerate(read_data(filename)):
 
-        tokens = tokenize(row['description'])
-        tokens = strip_stopwords(tokens, stopwords)
+        tokens = tokenize(row['description'], stopwords)
 
         docs['%s\t%s' % (n, row['shape'])] = tokens
 
@@ -57,10 +56,8 @@ def read_tsv(filename):
             continue
 
         shape = row[3].strip()
-
         if not shape:
             shape = 'missing'
-
         row[3] = shape
 
         success += 1
@@ -82,10 +79,8 @@ def read_json(filename):
             row = json.loads(row)
 
             shape = row['shape'].strip()
-
             if not shape:
                 shape = 'missing'
-
             row['shape'] = shape
 
             yield row
@@ -105,19 +100,32 @@ def get_shape_histogram(filename):
 
     print panda.groupby('shape')['shape'].count().to_string()
 
+#    counts = Counter()
+
+#    for row in read_data(filename):
+#        counts.update([row['shape']])
+
+#    print counts
+
 def get_word_frequencies_by_shape(filename):
 
-    freqs = defaultdict(Counter)
+#    freqs = defaultdict(Counter)
 
-    for row in read_data(filename):
+#    for row in read_data(filename):
+#        freqs[row['shape']].update(tokenize(row['description'], stopwords))
 
-        tokens = tokenize(row['description'])
-        tokens = strip_stopwords(tokens, stopwords)
+#    for key, value in freqs.items():
+#        print key, value.most_common(5)
 
-        freqs[row['shape']].update(tokens)
+    panda = DataFrame(list(read_data(filename)))
 
-    for key, value in freqs.items():
-        print key, value.most_common(5)
+    for shape, group in panda.groupby('shape'):
+
+        group_tokens = group['description'].apply(tokenize)
+
+        freqs = Counter(w for tokens in group_tokens for w in tokens)
+
+        print shape, freqs.most_common(5)
 
 if __name__ == '__main__':
 
@@ -125,4 +133,4 @@ if __name__ == '__main__':
 
     get_shape_histogram('ufo_awesome.json')
 
-#    get_word_frequencies_by_shape('ufo_awesome.json')
+    get_word_frequencies_by_shape('ufo_awesome.json')
