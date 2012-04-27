@@ -1,8 +1,13 @@
 import re
 
-def tokenize(data):
+def tokenize(data, stopwords=None):
 
-    return re.findall('\w+', re.sub('&[a-z]+;', ' ', data.lower()))
+    tokens = re.findall('\w+', re.sub('&[a-z]+;', ' ', data.lower()))
+
+    if stopwords:
+        tokens = strip_stopwords(tokens, stopwords)
+
+    return tokens
 
 def create_stopword_list(stopword_files):
 
