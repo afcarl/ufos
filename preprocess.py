@@ -4,6 +4,8 @@ import json
 from text_utils import *
 import os
 from pandas import *
+from IPython import embed
+from pylab import bar, show, xticks
 
 stopwords = create_stopword_list(['stopwordlist.txt'])
 
@@ -55,10 +57,10 @@ def read_tsv(filename):
             failure += 1
             continue
 
-        shape = row[3].strip()
-        if not shape:
-            shape = 'missing'
-        row[3] = shape
+        row = [x.strip() for x in row]
+
+        if not row[3]:
+            row[3] = 'missing'
 
         success += 1
 
@@ -76,12 +78,10 @@ def read_json(filename):
 
         try:
 
-            row = json.loads(row)
+            row = dict((k, v.strip()) for (k, v) in json.loads(row).items())
 
-            shape = row['shape'].strip()
-            if not shape:
-                shape = 'missing'
-            row['shape'] = shape
+            if not row['shape']:
+                row['shape'] = 'missing'
 
             yield row
 
@@ -92,20 +92,69 @@ def read_json(filename):
 
 #    stderr.write('Read %d out of %d rows\n' % (success, success + failure))
 
+def get_us_data(filename):
+
+    counts = Counter()
+
+    states = set(['AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+                  'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD',
+                  'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH',
+                  'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+                  'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY'])
+
+    states.add('DC')
+
+    for row in read_data(filename):
+
+        location = row['location']
+
+        if location == 'Washington, D.C., DC':
+            location = 'Washington D.C., DC'
+
+        try:
+            (city, state) = location.split(', ')
+        except ValueError as e:
+            continue
+
+        if len(state) == 2 and state in states:
+            city = ' '.join(tokenize(re.sub('\s*\(.*\)?', '', city)))
+        else:
+            continue
+
+        counts.update(['%s %s' % (city, state.lower())])
+
+    x, y = zip(*counts.most_common(25))
+
+    bar(range(len(y)), y, align='center')
+    xticks(range(len(y)), x, rotation=270)
+
+    from pylab import xlim
+
+    xlim(-1, xlim()[1])
+
+    show()
+
 def get_shape_histogram(filename):
 
-    panda = DataFrame(list(read_data(filename)))
-
-#    panda.groupby('shape')['shape'].count().to_csv(stdout, sep='\t')
-
-    print panda.groupby('shape')['shape'].count().to_string()
-
-#    counts = Counter()
+    counts = Counter()
 
 #    for row in read_data(filename):
 #        counts.update([row['shape']])
 
-#    print counts
+#    for key, value in counts.items():
+#        print '%s\t%s' % (key, value)
+
+    panda = DataFrame(list(read_data(filename)))
+
+    for shape in panda['shape']:
+        counts.update([shape])
+
+    print panda.groupby('shape')['shape'].count().to_string()
+
+    bar(range(len(counts)), counts.values(), align='center')
+    xticks(range(len(counts)), counts.keys(), rotation=90)
+
+    show()
 
 def get_word_frequencies_by_shape(filename):
 
@@ -123,6 +172,8 @@ def get_word_frequencies_by_shape(filename):
 
         group_tokens = group['description'].apply(tokenize)
 
+        # stopwords are not being stripped
+
         freqs = Counter(w for tokens in group_tokens for w in tokens)
 
         print shape, freqs.most_common(5)
@@ -131,6 +182,8 @@ if __name__ == '__main__':
 
 #    malletize('ufo_awesome.json')
 
-    get_shape_histogram('ufo_awesome.json')
+#    get_shape_histogram('ufo_awesome.json')
 
-    get_word_frequencies_by_shape('ufo_awesome.json')
+#    get_word_frequencies_by_shape('ufo_awesome.json')
+
+#    get_us_data('ufo_awesome.tsv')
